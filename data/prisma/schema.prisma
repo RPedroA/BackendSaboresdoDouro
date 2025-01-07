@@ -1,0 +1,81 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo dos Utilizadores
+model User {
+  id       Int      @id @default(autoincrement()) // Chave primária 
+  nome     String   @db.VarChar(40) // Nome do utilizador 
+  email    String   @unique @db.VarChar(100) // E-mail único 
+  password String   @db.VarChar(255) // Palavra-passe 
+  isAdmin  Boolean  @default(false) // Para saber se é admin ou não
+  reviews  Review[] // Avaliações feitas pelo utilizador
+}
+
+// Modelo das Categorias
+model Category {
+  category_id Int    @id @default(autoincrement()) // Chave primária 
+  nome        String @db.VarChar(50) // Nome da categoria 
+  wines       Wine[] // Relacionamento com vinhos
+}
+
+// Modelo dos Vinhos
+model Wine {
+  wine_id           Int      @id @default(autoincrement()) // Chave primária 
+  nome              String   @db.VarChar(40) // Nome do vinho 
+  descricao         String   @db.VarChar(600) // Descrição do vinho 
+  preco             Float // Preço do vinho
+  imagem            String // URL da imagem do vinho 
+  emPromocao        Boolean  @default(false) // Indica se o vinho está em promoção
+  precoPromocao     Float? // Preço promocional do vinho
+  emDestaque        Boolean  @default(false) // Indica se o vinho está em destaque
+  descricaoDestaque String?  @db.VarChar(350) // Descrição do destaque 
+  categoriaId       Int // Relacionamento com a categoria
+  categoria         Category @relation(fields: [categoriaId], references: [category_id])
+  averageRating Float    @default(0.0) // Avaliação média do vinho
+  
+  reviews        Review[] // Avaliações feitas ao vinho
+  bottleSizes    BottleSize[]     @relation("WineBottleSizes") // Relação com os tamanhos de garrafa através da tabela de junção
+  WineBottleSize WineBottleSize[]
+}
+
+// Modelo dos Tamanhos de Garrafas
+model BottleSize {
+  bottle_size_id Int   @id @default(autoincrement()) // Chave primária 
+  tamanho        Float // Tamanho da garrafa (em litros)
+
+  wines          Wine[]           @relation("WineBottleSizes") // Relação com os vinhos através da tabela de junção
+  WineBottleSize WineBottleSize[]
+}
+
+// Modelo da tabela de junção entre Vinhos e Tamanhos
+model WineBottleSize {
+  wine_id        Int
+  bottle_size_id Int
+  wine           Wine       @relation(fields: [wine_id], references: [wine_id]) // Relacionamento com o modelo Wine
+  bottleSize     BottleSize @relation(fields: [bottle_size_id], references: [bottle_size_id]) // Relacionamento com o modelo BottleSize
+
+  @@id([wine_id, bottle_size_id]) // Chave composta para garantir que a combinação vinho-tamanho seja única
+}
+
+// Modelo das Avaliações
+model Review {
+  review_id Int   @id @default(autoincrement()) // Chave primária 
+  user_id   Int // ID do utilizador que fez a avaliação
+  wine_id   Int // ID do vinho avaliado
+  rating    Float // Avaliação de 1 a 5 estrelas
+
+  user User @relation(fields: [user_id], references: [id]) // Relacionamento com o modelo User
+  wine Wine @relation(fields: [wine_id], references: [wine_id]) // Relacionamento com o modelo Wine
+}
