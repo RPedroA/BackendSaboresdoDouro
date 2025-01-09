@@ -1,5 +1,6 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
+const upload = require("../middleware/multerConfig");
 
 // Criar um vinho
 const createWine = async (req, res) => {
@@ -11,10 +12,12 @@ const createWine = async (req, res) => {
     isPromotion,
     promotionPrice,
     bottleSizes,
-    imagem,
     emDestaque,
     descricaoDestaque,
   } = req.body;
+
+  // Capturar o caminho da imagem carregada pelo multer
+  const imagem = req.file ? req.file.path : null;
 
   // Arrays para rastrear parâmetros ausentes ou inválidos
   const missingParams = [];
@@ -34,7 +37,6 @@ const createWine = async (req, res) => {
   else if (typeof category !== "number") invalidParams.push("category");
 
   if (!imagem) missingParams.push("imagem");
-  else if (typeof imagem !== "string") invalidParams.push("imagem");
 
   // Verificar tipos opcionais
   if (isPromotion !== undefined && typeof isPromotion !== "boolean") {
@@ -153,6 +155,7 @@ const getWineById = async (req, res) => {
 const updateWine = async (req, res) => {
   const { id } = req.params;
   const data = req.body;
+  const imagem = req.file ? req.file.path : undefined;
 
   if (!id || isNaN(id)) {
     return res.status(400).json({
@@ -161,58 +164,12 @@ const updateWine = async (req, res) => {
     });
   }
 
-  const invalidParams = [];
-  if (data.name && typeof data.name !== "string") invalidParams.push("name");
-  if (data.description && typeof data.description !== "string")
-    invalidParams.push("description");
-  if (data.price && typeof data.price !== "number") invalidParams.push("price");
-  if (data.category && typeof data.category !== "number")
-    invalidParams.push("category");
-  if (data.isPromotion !== undefined && typeof data.isPromotion !== "boolean")
-    invalidParams.push("isPromotion");
-  if (
-    data.promotionPrice !== undefined &&
-    typeof data.promotionPrice !== "number"
-  )
-    invalidParams.push("promotionPrice");
-  if (data.imagem && typeof data.imagem !== "string") invalidParams.push("imagem");
-  if (data.emDestaque !== undefined && typeof data.emDestaque !== "boolean")
-    invalidParams.push("emDestaque");
-  if (
-    data.descricaoDestaque !== undefined &&
-    typeof data.descricaoDestaque !== "string"
-  )
-    invalidParams.push("descricaoDestaque");
-
-  if (invalidParams.length > 0) {
-    return res.status(400).json({
-      erro: "Tipos incorretos nos campos",
-      detalhes: `Os seguintes campos têm tipos inválidos: ${invalidParams.join(
-        ", "
-      )}`,
-    });
-  }
-
   try {
     const updatedWine = await prisma.wine.update({
       where: { wine_id: parseInt(id) },
       data: {
-        nome: data.name,
-        descricao: data.description,
-        preco: data.price,
-        categoriaId: data.category,
-        emPromocao: data.isPromotion || false,
-        precoPromocao: data.promotionPrice || null,
-        imagem: data.imagem,
-        emDestaque: data.emDestaque || false,
-        descricaoDestaque: data.descricaoDestaque || null,
-        bottleSizes: data.bottleSizes
-          ? {
-              connect: data.bottleSizes.map((sizeId) => ({
-                bottle_size_id: sizeId,
-              })),
-            }
-          : undefined,
+        ...data,
+        imagem: imagem || data.imagem,
       },
     });
 
@@ -226,7 +183,6 @@ const updateWine = async (req, res) => {
 };
 
 // Apagar um vinho
-// Apagar um vinho
 const deleteWine = async (req, res) => {
   const { id } = req.params;
 
@@ -238,7 +194,6 @@ const deleteWine = async (req, res) => {
   }
 
   try {
-    // Verificar se o vinho existe
     const wine = await prisma.wine.findUnique({
       where: { wine_id: parseInt(id) },
     });
@@ -249,7 +204,6 @@ const deleteWine = async (req, res) => {
         .json({ erro: `Vinho com ID ${id} não encontrado.` });
     }
 
-    // Verificar se o vinho está em destaque
     if (wine.emDestaque) {
       return res.status(400).json({
         erro: "Não é possível apagar o vinho.",
@@ -257,12 +211,10 @@ const deleteWine = async (req, res) => {
       });
     }
 
-    // Apagar todas as reviews associadas ao vinho
     await prisma.review.deleteMany({
       where: { wine_id: parseInt(id) },
     });
 
-    // Apagar o vinho
     await prisma.wine.delete({
       where: { wine_id: parseInt(id) },
     });
@@ -276,7 +228,6 @@ const deleteWine = async (req, res) => {
     });
   }
 };
-
 
 module.exports = {
   createWine,

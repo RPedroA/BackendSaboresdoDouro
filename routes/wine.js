@@ -1,4 +1,6 @@
 const express = require("express");
+const router = express.Router();
+const upload = require("../middleware/multerConfig"); // Middleware para upload de imagens
 const {
   createWine,
   getAllWines,
@@ -7,21 +9,19 @@ const {
   deleteWine,
 } = require("../controllers/wineController");
 
-const router = express.Router();
+// Rota para criar um novo vinho (com upload de imagem)
+router.post("/create", upload.single("file"), createWine);
 
-// Create a new wine
-router.post("/create", createWine);
+// Rota para atualizar um vinho existente (com upload de imagem)
+router.put("/update/:id", upload.single("file"), updateWine);
 
-// Get all wines
+// Rotas para obter vinhos
 router.get("/", getAllWines);
 
-// Get a wine by ID
+// Rota para obter vinho por ID
 router.get("/:id", getWineById);
 
-// Update a wine by ID
-router.put("/update/:id", updateWine);
-
-// Delete a wine by ID
-router.delete("/delete/:id", deleteWine);
+//Rota para apagar um vinho
+router.delete("/:id", deleteWine);
 
 module.exports = router;
